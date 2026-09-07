@@ -10,22 +10,7 @@ TensorDict = Dict[str, torch.Tensor]
 
 
 class SceneBackbone(nn.Module):
-    """
-    Scene encoder.
-
-    Input:
-        past_positions:  [B, T_past, N, 2]
-        past_velocities: [B, T_past, N, 2]
-
-    Output:
-        agent_embeddings: [B, N, D]
-        scene_embedding:  [B, D]
-
-    Idea:
-        each agent history is encoded independently by an MLP;
-        then we mean-pool over agents to get a global scene embedding.
-    """
-
+# each agent history is encoded independently by an MLP, then we mean-pool over agents to get a global scene embedding.
     def __init__(
         self,
         T_past: int,
@@ -70,14 +55,6 @@ class SceneBackbone(nn.Module):
         past_positions: torch.Tensor,
         past_velocities: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        Convert history into per-agent flat features.
-
-        We use relative positions:
-            position_t - position_last
-
-        This makes the encoder less dependent on absolute map location.
-        """
         if past_positions.dim() != 4:
             raise ValueError(
                 f"past_positions must have shape [B,T,N,2], got {past_positions.shape}"
@@ -114,12 +91,6 @@ class SceneBackbone(nn.Module):
         past_positions: torch.Tensor | TensorDict,
         past_velocities: torch.Tensor | None = None,
     ) -> TensorDict:
-        """
-        Forward supports two modes:
-
-        1. backbone(batch)
-        2. backbone(past_positions, past_velocities)
-        """
         valid_agent_mask = None
         if isinstance(past_positions, dict):
             batch = past_positions
