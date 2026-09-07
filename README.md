@@ -25,7 +25,7 @@ The KL threshold can also adapt to scene context, including traffic density, pre
 
 ## Architecture
 
-![Architecture](assets/architecture.png)
+![Architecture](assets/kl_architecter.png)
                          ↓
                   Safety distillation
                   during training
