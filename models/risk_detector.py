@@ -15,10 +15,8 @@ RiskyPairs = List[List[Tuple[int, int]]]
 
 
 def inverse_softplus(x: float) -> float:
-    """Return y such that softplus(y) ~= x for x > 0."""
     if x <= 0:
         raise ValueError("inverse_softplus input must be positive")
-    # expm1 overflows for large thresholds; softplus(y) ~= y in that regime.
     if x > 20.0:
         return x
     return math.log(math.expm1(x))
@@ -31,7 +29,6 @@ def kl_gaussian(
     sigma_p: torch.Tensor,
     eps: float = 1e-6,
 ) -> torch.Tensor:
-    """Analytic KL(q || p) for diagonal Gaussians, summed over the last dim."""
     sigma_q = torch.clamp(sigma_q, min=eps)
     sigma_p = torch.clamp(sigma_p, min=eps)
     kl = (
@@ -43,23 +40,6 @@ def kl_gaussian(
 
 
 class RiskDetector(nn.Module):
-    """
-    Pair-level KL risk detector with an optional context-dependent threshold.
-
-    The final matched-budget archive accidentally made the KL threshold irrelevant:
-    candidate pairs were already inside d_min and an emergency distance override then
-    refined every candidate. This implementation separates three concepts:
-
-      1) candidate radius: d_pair + safety_margin;
-      2) KL decision: normalized KL > theta(scene);
-      3) optional emergency override: only for deep penetration below
-         d_pair - collision_margin.
-
-    Contextual theta uses scene density and predicted uncertainty. A stricter
-    safety_requirement in [0, 1] monotonically lowers theta and therefore calls the
-    refiner more often.
-    """
-
     def __init__(
         self,
         d_min: float = 1.5,
@@ -107,8 +87,6 @@ class RiskDetector(nn.Module):
         theta_raw_init = inverse_softplus(float(kl_threshold_init))
         self.theta_raw = nn.Parameter(torch.tensor(theta_raw_init, dtype=torch.float32))
 
-        # Density and log-uncertainty offsets. Zero initialization makes the new
-        # detector exactly scalar-thresholded until it is calibrated/trained.
         self.context_net = nn.Sequential(
             nn.Linear(2, contextual_hidden),
             nn.Tanh(),
@@ -144,7 +122,6 @@ class RiskDetector(nn.Module):
 
     @property
     def theta(self) -> torch.Tensor:
-        """Backward-compatible scalar/base threshold."""
         return F.softplus(self.theta_raw).clamp(self.theta_min, self.theta_max)
 
     def set_theta(self, theta_value: float) -> None:
@@ -157,7 +134,6 @@ class RiskDetector(nn.Module):
 
     @torch.no_grad()
     def set_context_stats(self, features: torch.Tensor) -> None:
-        """Fit normalization statistics for [density, log1p(uncertainty)]."""
         if features.ndim != 2 or features.shape[1] != 2:
             raise ValueError(f"Expected context features [M,2], got {features.shape}")
         self.context_mean.copy_(features.mean(dim=0).to(self.context_mean))
@@ -170,7 +146,6 @@ class RiskDetector(nn.Module):
         max_kl_values: torch.Tensor,
         target_refine_rate: float = 0.25,
     ) -> float:
-        """Set the base theta to a requested global refinement-rate quantile."""
         if max_kl_values.numel() == 0:
             return float(self.theta.item())
         target_refine_rate = max(0.0, min(1.0, float(target_refine_rate)))
@@ -240,7 +215,7 @@ class RiskDetector(nn.Module):
             min_pair_dist < (d_pair + self.safety_margin)
         ) & valid_pairs
 
-        # Emergency override means deep penetration, not every candidate pair.
+        # Emergency override means deep penetration, not every candidate pair
         emergency_radius = torch.clamp(d_pair - self.collision_margin, min=0.0)
         critical_mask = (min_pair_dist < emergency_radius) & valid_pairs
         return candidate_mask, critical_mask, min_pair_dist, valid_pairs
@@ -296,7 +271,7 @@ class RiskDetector(nn.Module):
         normalized = (context_features - self.context_mean) / self.context_std
         context_offset = self.context_net(normalized).squeeze(-1)
 
-        # Strict safety (1.0) lowers theta; permissive safety (0.0) raises it.
+        # Strict safety (1.0) lowers theta, permissive safety (0.0) raises it
         safety_offset = -self.safety_sensitivity * (safety_requirement - 0.5)
         raw = self.theta_raw + context_offset + safety_offset
         return F.softplus(raw).clamp(self.theta_min, self.theta_max)
@@ -307,7 +282,7 @@ class RiskDetector(nn.Module):
         candidate_mask: torch.Tensor,
         pairwise_d_min: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """Compute normalized KL(q_safe || p_fast) only for candidate pairs."""
+        # only for candidate pairs
         mu_p = prior_dist.mu
         sigma_p = prior_dist.sigma
         B, T, N, _ = mu_p.shape
@@ -364,8 +339,6 @@ class RiskDetector(nn.Module):
         if self.kl_reduction == "sum":
             kl_values = kl_per_time.sum(dim=1)
         else:
-            # Mean over time and the four pair coordinates. This keeps theta
-            # comparable when changing the prediction horizon (10 -> 30 frames).
             kl_values = kl_per_time.mean(dim=1) / 4.0
 
         kl_matrix[b_idx, i_idx, j_idx] = kl_values
@@ -425,7 +398,7 @@ class RiskDetector(nn.Module):
             kl_idx = torch.nonzero(kl_pair_mask[b] & ~critical_mask[b], as_tuple=False)
 
             selected: List[Tuple[int, int]] = []
-            # Emergency pairs are never dropped by top-k.
+            # Emergency pairs are never dropped by top-k
             if self.force_refine_collisions and emergency_idx.numel() > 0:
                 for row in emergency_idx:
                     selected.append((int(row[0].item()), int(row[1].item())))
@@ -469,7 +442,6 @@ class RiskDetector(nn.Module):
         risk_logits: Optional[torch.Tensor] = None,
         theta_scene: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """BCE loss for scalar/contextual threshold calibration."""
         if is_hard is None:
             raise ValueError("is_hard/target labels must be provided")
         if risk_logits is None:
