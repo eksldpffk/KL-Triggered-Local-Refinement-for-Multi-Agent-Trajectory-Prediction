@@ -1,0 +1,93 @@
+# First realistic-data configuration: INTERACTION / INTERPRET trajectories.
+# Download data separately and set data.root.
+seed: 42
+device: "cpu"
+
+data:
+  source: "interaction"
+  root: "/path/to/INTERACTION"
+  split: "train"
+  vehicles_only: true
+  stride: 10
+  max_files: null
+  max_scenes: null
+  safety_requirement: 0.5
+
+paths:
+  results_dir: "results_interaction"
+  checkpoint_dir: "results_interaction/checkpoints"
+  train_log: "results_interaction/train_log.csv"
+  benchmark_csv: "results_interaction/results.csv"
+
+scene:
+  n_agents: 10
+  T_past: 10
+  T_future: 30
+  dt: 0.1
+  d_min: 2.0
+  local_radius: 45.0
+
+model:
+  backbone_dim: 96
+  planner_hidden: 192
+  min_log_sigma: -5.0
+  max_log_sigma: 2.0
+
+risk:
+  kl_threshold_init: 0.10
+  lr_theta: 0.0005
+  posterior_sigma_scale: 0.7
+  min_sigma: 0.05
+  safety_margin: 0.75
+  sharpness: 8.0
+  top_k_pairs: 3
+  target_refine_rate: 0.25
+  kl_reduction: "mean"
+  threshold_mode: "contextual"
+  contextual_hidden: 16
+  safety_sensitivity: 1.0
+  force_refine_collisions: true
+  collision_margin: 0.35
+
+admm:
+  rho: 1.0
+  n_iters: 15
+  eps: 0.0001
+  projection_strength: 1.0
+
+train:
+  lr: 0.0005
+  batch_size: 64
+  split_epochs: 8
+  branch_epochs: 35
+  steps_per_epoch: 100
+  val_batches: 8
+  theta_calib_batches: 20
+
+  # No oracle hard-pair labels and no global collision penalty: the only extra
+  # supervision is the KL-selected local teacher correction.
+  lambda_gt_all: 1.00
+  lambda_easy_gt: 0.00
+  lambda_hard_gt: 0.00
+  lambda_distill: 1.00
+  lambda_safety: 0.00
+  lambda_pair_safety: 0.00
+  safety_loss_margin: 0.20
+  pair_safety_margin: 0.30
+  safe_target_blend: 0.70
+  grad_clip: 5.0
+  print_every: 20
+
+eval:
+  batch_size: 128
+  n_batches: 20
+  latency_warmup: 5
+  latency_runs: 30
+
+plots:
+  save_debug_scenes: true
+  save_training_curves: true
+  save_kl_ade_scatter: true
+
+scene_switching:
+  risk_margin: 0.5
