@@ -24,8 +24,6 @@ The framework follows four main steps:
 The KL threshold can also adapt to scene context, including traffic density, predictive uncertainty, and the desired safety level.
 
 ## Architecture
-
-![Architecture](assets/kl_architecter.png)
-                         ↓
-                  Safety distillation
-                  during training
+<p align="center">
+   ![Architecture](assets/kl_architecter.png)
+</p>
