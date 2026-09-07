@@ -72,9 +72,6 @@ def evaluate_threshold_contexts(
     df = pd.DataFrame(rows)
 
     def robust_quantile_bin(values: pd.Series, name: str) -> pd.Series:
-        # qcut returns no usable groups when every scene has the same value.
-        # Keep a single explicit bin in that case so small/debug evaluations and
-        # homogeneous subsets still produce a summary table.
         if values.nunique(dropna=True) < 2:
             return pd.Series([f"{name}_all"] * len(values), index=values.index)
         try:
