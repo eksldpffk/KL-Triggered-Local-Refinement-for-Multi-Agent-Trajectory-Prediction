@@ -8,13 +8,6 @@ from torch import nn
 
 
 class ProbabilisticTrajectory:
-    """
-    Diagonal Gaussian distribution over future trajectories.
-
-    Shapes:
-        mu:        [B, T_future, N, 2]
-        log_sigma: [B, T_future, N, 2]
-    """
 
     def __init__(
         self,
@@ -40,16 +33,10 @@ class ProbabilisticTrajectory:
         return torch.exp(self.log_sigma)
 
     def sample(self) -> torch.Tensor:
-        """
-        Non-differentiable sample.
-        """
         eps = torch.randn_like(self.mu)
         return self.mu + self.sigma * eps
 
     def rsample(self) -> torch.Tensor:
-        """
-        Differentiable reparameterized sample.
-        """
         eps = torch.randn_like(self.mu)
         return self.mu + self.sigma * eps
 
@@ -58,15 +45,7 @@ class ProbabilisticTrajectory:
         target: torch.Tensor,
         reduce: bool = True,
     ) -> torch.Tensor:
-        """
-        Gaussian log probability.
-
-        Args:
-            target: [B, T_future, N, 2]
-            reduce:
-                True  -> returns [B]
-                False -> returns [B, T_future, N, 2]
-        """
+        # Gussian log probability
         if target.shape != self.mu.shape:
             raise ValueError(
                 f"target must have shape {self.mu.shape}, got {target.shape}"
@@ -90,9 +69,7 @@ class ProbabilisticTrajectory:
         target: torch.Tensor,
         reduction: str = "mean",
     ) -> torch.Tensor:
-        """
-        Negative log likelihood.
-        """
+    
         nll_per_scene = -self.log_prob(target, reduce=True)
 
         if reduction == "mean":
@@ -108,23 +85,6 @@ class ProbabilisticTrajectory:
 
 
 class GlobalPlanner(nn.Module):
-    """
-    Fast global planner.
-
-    Input:
-        agent_embeddings: [B, N, D]
-        scene_embedding:  [B, D]
-        last_positions:   [B, N, 2]
-        last_velocities:  [B, N, 2]
-
-    Output:
-        ProbabilisticTrajectory with:
-            mu:        [B, T_future, N, 2]
-            log_sigma: [B, T_future, N, 2]
-
-    The model predicts a residual over constant-velocity rollout.
-    This makes early training much more stable.
-    """
 
     def __init__(
         self,
@@ -178,10 +138,6 @@ class GlobalPlanner(nn.Module):
         last_positions: torch.Tensor,
         last_velocities: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        Simple physics prior:
-            x_{t+k} = x_t + k * dt * v_t
-        """
         B, N, _ = last_positions.shape
 
         steps = torch.arange(
@@ -224,12 +180,12 @@ class GlobalPlanner(nn.Module):
                 last_velocities,
             ],
             dim=-1,
-        )                                                   # [B, N, 2D+2]
+        )                                                  
 
-        hidden = self.shared_mlp(planner_features)          # [B, N, H]
+        hidden = self.shared_mlp(planner_features)
 
-        residual = self.residual_head(hidden)               # [B, N, T*2]
-        log_sigma = self.log_sigma_head(hidden)             # [B, N, T*2]
+        residual = self.residual_head(hidden)
+        log_sigma = self.log_sigma_head(hidden)
 
         residual = residual.view(B, N, self.T_future, 2)
         log_sigma = log_sigma.view(B, N, self.T_future, 2)
