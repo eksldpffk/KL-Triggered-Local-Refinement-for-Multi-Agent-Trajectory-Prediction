@@ -25,16 +25,6 @@ def displacement_error(
     pred: torch.Tensor,
     gt: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    Per-step L2 displacement error.
-
-    Args:
-        pred: [B, T, N, 2]
-        gt:   [B, T, N, 2]
-
-    Returns:
-        error: [B, T, N]
-    """
     if pred.shape != gt.shape:
         raise ValueError(f"pred and gt must have same shape, got {pred.shape} and {gt.shape}")
 
@@ -71,7 +61,7 @@ def fde(
     reduction: str = "mean",
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Final displacement error with optional padded-agent masking."""
+    # Final displacement error with optional padded-agent masking
     final_err = displacement_error(pred, gt)[:, -1, :]
     if valid_agent_mask is None:
         per_scene = final_err.mean(dim=1)
@@ -88,7 +78,7 @@ def min_pairwise_distance(
     traj: torch.Tensor,
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Minimum pairwise point distance, ignoring padded agents."""
+    # Minimum pairwise point distance, ignoring padded agents
     if traj.dim() != 4 or traj.shape[-1] != 2:
         raise ValueError(f"Expected traj shape [B,T,N,2], got {traj.shape}")
     B, _, N, _ = traj.shape
@@ -109,7 +99,7 @@ def collision_rate(
     reduction: str = "mean",
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Fraction of scenes with a point-distance violation."""
+    # Fraction of scenes with a point-distance violation
     min_dist = min_pairwise_distance(traj, valid_agent_mask=valid_agent_mask)
     collision = min_dist < d_min
     if reduction == "mean":
@@ -122,11 +112,6 @@ def masked_mean(
     values: torch.Tensor,
     mask: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    Mean over values where mask is True.
-
-    If the mask is empty, returns NaN.
-    """
     mask = mask.bool()
 
     if mask.sum() == 0:
@@ -142,11 +127,7 @@ def compute_prediction_metrics(
     is_hard: Optional[torch.Tensor] = None,
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> Dict[str, float]:
-    """
-    Compute ADE, FDE, collision rate.
-
-    If is_hard is provided, also computes hard/easy metrics.
-    """
+    # Compute ADE, FDE, collision rate, hard/easy (in some cases is_hard) metrics
     ade_scene = ade(pred, gt, reduction="none", valid_agent_mask=valid_agent_mask)
     fde_scene = fde(pred, gt, reduction="none", valid_agent_mask=valid_agent_mask)
     coll_scene = collision_rate(
@@ -182,9 +163,6 @@ def compute_prediction_metrics(
 
 
 def refinement_rate_from_stats(stats: Dict[str, object]) -> float:
-    """
-    Extract refinement rate from FullSystem stats.
-    """
     if "refine_rate" in stats:
         return float(stats["refine_rate"])
 
@@ -201,26 +179,6 @@ def refinement_rate_decay(
     refine_rates: Iterable[float],
     window: int = 5,
 ) -> Dict[str, float]:
-    """
-    Refinement Rate Decay.
-
-    Measures how much the ADMM/refiner call frequency decreases during training.
-
-    Args:
-        refine_rates:
-            sequence of refine rates over training steps or epochs.
-
-        window:
-            number of first/last points used for smoothing.
-
-    Returns:
-        {
-            start_rate,
-            end_rate,
-            absolute_drop,
-            relative_drop
-        }
-    """
     rates: List[float] = [float(x) for x in refine_rates]
 
     if len(rates) == 0:
@@ -259,32 +217,7 @@ def latency_ms(
     warmup: int = 5,
     runs: int = 30,
     device: Optional[torch.device | str] = None,
-) -> Dict[str, float]:
-    """
-    Measure inference latency in milliseconds.
-
-    Args:
-        model:
-            FullSystem model.
-
-        batch:
-            batch from SceneGenerator.
-
-        mode:
-            global_only | kl_triggered | always_refine | oracle_refine
-
-        warmup:
-            number of unmeasured runs.
-
-        runs:
-            number of measured runs.
-
-    Returns:
-        {
-            mean_ms,
-            std_ms
-        }
-    """
+) -> Dict[str, float]
     if device is None:
         device = next(model.parameters()).device
     else:
