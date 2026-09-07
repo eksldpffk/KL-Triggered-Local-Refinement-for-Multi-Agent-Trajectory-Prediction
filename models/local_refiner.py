@@ -13,20 +13,6 @@ RiskyPairs = List[List[Tuple[int, int]]]
 
 
 class LocalRefiner(nn.Module):
-    """
-    Vectorized ADMM-like local trajectory refiner.
-
-    It does not learn parameters.
-
-    Main improvement over the simple version:
-        pair projection is vectorized over batch, time, agents, and pairs.
-
-    Shapes:
-        global_traj: [B, T_future, N, 2]
-        pair_mask:   [B, N, N], upper-triangular boolean mask
-        refined:     [B, T_future, N, 2]
-    """
-
     def __init__(
         self,
         d_min: float = 1.5,
@@ -68,13 +54,7 @@ class LocalRefiner(nn.Module):
         u: torch.Tensor,
         global_traj: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        minimize 0.5 ||x - global_traj||^2
-               + rho/2 ||x - z + u||^2
 
-        closed form:
-            x = (global_traj + rho * (z - u)) / (1 + rho)
-        """
         return (global_traj + self.rho * (z - u)) / (1.0 + self.rho)
 
     def _upper_triangular_mask(
@@ -94,9 +74,6 @@ class LocalRefiner(nn.Module):
         n_agents: int,
         device: torch.device,
     ) -> torch.Tensor:
-        """
-        Convert Python list risky_pairs to tensor mask [B, N, N].
-        """
         mask = torch.zeros(
             batch_size,
             n_agents,
@@ -121,34 +98,18 @@ class LocalRefiner(nn.Module):
         return mask
 
     def _pairwise_distances(self, traj: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            traj: [B, T, N, 2]
-
-        Returns:
-            dist: [B, T, N, N]
-        """
         diff = traj[:, :, :, None, :] - traj[:, :, None, :, :]
         dist = torch.linalg.norm(diff, dim=-1)
         return dist
 
     def close_pairs_mask(self, traj: torch.Tensor) -> torch.Tensor:
-        """
-        Find all pairs that violate d_min at least once.
-
-        Args:
-            traj: [B, T, N, 2]
-
-        Returns:
-            mask: [B, N, N], upper-triangular
-        """
         if traj.dim() != 4 or traj.shape[-1] != 2:
             raise ValueError(f"Expected traj shape [B,T,N,2], got {traj.shape}")
 
         B, _, N, _ = traj.shape
 
-        dist = self._pairwise_distances(traj)                  # [B,T,N,N]
-        close = (dist < self.d_min).any(dim=1)                 # [B,N,N]
+        dist = self._pairwise_distances(traj)
+        close = (dist < self.d_min).any(dim=1)
 
         upper = self._upper_triangular_mask(N, traj.device)
 
@@ -160,25 +121,6 @@ class LocalRefiner(nn.Module):
         risky_pairs: Optional[RiskyPairs] = None,
         pair_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """
-        Vectorized safety projection.
-
-        For each selected pair (i, j), if distance < d_min,
-        push i and j apart by half of the violation.
-
-        Args:
-            y:
-                [B, T, N, 2]
-
-            risky_pairs:
-                optional Python list of selected pairs
-
-            pair_mask:
-                optional tensor mask [B, N, N]
-
-        Returns:
-            projected trajectory [B, T, N, 2]
-        """
         if y.dim() != 4 or y.shape[-1] != 2:
             raise ValueError(f"Expected y shape [B,T,N,2], got {y.shape}")
 
@@ -203,11 +145,11 @@ class LocalRefiner(nn.Module):
         if not pair_mask.any():
             return y.clone()
 
-        diff = y[:, :, :, None, :] - y[:, :, None, :, :]        # [B,T,N,N,2]
-        dist = torch.linalg.norm(diff, dim=-1)                  # [B,T,N,N]
+        diff = y[:, :, :, None, :] - y[:, :, None, :, :]        
+        dist = torch.linalg.norm(diff, dim=-1)
 
         dist_safe = dist.clamp(min=self.eps)
-        direction = diff / dist_safe[..., None]                 # [B,T,N,N,2]
+        direction = diff / dist_safe[..., None]
 
         fallback = torch.zeros_like(direction)
         fallback[..., 0] = 1.0
@@ -217,9 +159,9 @@ class LocalRefiner(nn.Module):
             direction,
         )
 
-        active = (dist < self.d_min) & pair_mask[:, None, :, :] # [B,T,N,N]
+        active = (dist < self.d_min) & pair_mask[:, None, :, :]
 
-        violation = torch.relu(self.d_min - dist)               # [B,T,N,N]
+        violation = torch.relu(self.d_min - dist)
 
         pair_correction = (
             0.5
@@ -227,13 +169,13 @@ class LocalRefiner(nn.Module):
             * direction
             * active[..., None]
             * self.projection_strength
-        )                                                       # [B,T,N,N,2]
+        )
 
         # For pair (i,j):
         #   +correction goes to agent i
         #   -correction goes to agent j
-        correction_as_first = pair_correction.sum(dim=3)        # [B,T,N,2]
-        correction_as_second = pair_correction.sum(dim=2)       # [B,T,N,2]
+        correction_as_first = pair_correction.sum(dim=3)
+        correction_as_second = pair_correction.sum(dim=2)
 
         total_correction = correction_as_first - correction_as_second
 
@@ -245,11 +187,8 @@ class LocalRefiner(nn.Module):
         risky_pairs: Optional[RiskyPairs] = None,
         pair_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """
-        Minimum distance over selected pairs.
+        # If a scene has no selected pairs, returns inf for that scene.
 
-        If a scene has no selected pairs, returns inf for that scene.
-        """
         if traj.dim() != 4 or traj.shape[-1] != 2:
             raise ValueError(f"Expected traj shape [B,T,N,2], got {traj.shape}")
 
@@ -271,12 +210,12 @@ class LocalRefiner(nn.Module):
         upper = self._upper_triangular_mask(N, traj.device)
         pair_mask = pair_mask & upper[None, :, :]
 
-        dist = self._pairwise_distances(traj)                   # [B,T,N,N]
+        dist = self._pairwise_distances(traj)
 
-        active = pair_mask[:, None, :, :]                       # [B,1,N,N]
+        active = pair_mask[:, None, :, :] 
         dist = dist.masked_fill(~active, float("inf"))
 
-        return dist.amin(dim=(1, 2, 3))                         # [B]
+        return dist.amin(dim=(1, 2, 3))
 
     @torch.no_grad()
     def refine(
@@ -285,9 +224,6 @@ class LocalRefiner(nn.Module):
         risky_pairs: Optional[RiskyPairs] = None,
         pair_mask: Optional[torch.Tensor] = None,
     ) -> TensorDict:
-        """
-        Run vectorized ADMM-like refinement.
-        """
         if global_traj.dim() != 4 or global_traj.shape[-1] != 2:
             raise ValueError(
                 f"Expected global_traj shape [B,T,N,2], got {global_traj.shape}"
