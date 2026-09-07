@@ -267,14 +267,14 @@ def evaluate_matched_budget_table(
     main_rows = []
 
     print("\nMatched-budget evaluation settings:")
-    print("device:          ", device)
-    print("warmup ckpt:     ", warmup_checkpoint)
-    print("gt ckpt:         ", gt_checkpoint)
-    print("ours ckpt:       ", ours_checkpoint)
-    print("evaluation split:", split)
-    print("n_batches:       ", n_batches)
-    print("batch_size:      ", batch_size)
-    print("warmup KL refine:", f"{warmup_rate:.3f}")
+    print("device: ", device)
+    print("warmup ckpt: ", warmup_checkpoint)
+    print("gt ckpt: ", gt_checkpoint)
+    print("ours ckpt: ", ours_checkpoint)
+    print("evaluation split: ", split)
+    print("n_batches: ", n_batches)
+    print("batch_size: ", batch_size)
+    print("warmup KL refine: ", f"{warmup_rate:.3f}")
 
     for item in methods:
         metrics = evaluate_method(item["System"], eval_batches, config, item["Mode"], device)
