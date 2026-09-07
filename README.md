@@ -25,5 +25,5 @@ The KL threshold can also adapt to scene context, including traffic density, pre
 
 ## Architecture
 <p align="center">
-   ![Architecture](assets/kl_architecter.png)
+   <img src= "assets/kl_architecter.png">
 </p>
