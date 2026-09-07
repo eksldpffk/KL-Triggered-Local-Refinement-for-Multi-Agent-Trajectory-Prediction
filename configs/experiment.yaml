@@ -3,11 +3,11 @@
 seed: 42
 device: "cpu"
 
-data:
-  source: "interaction"
-  root: "/path/to/INTERACTION"
-  split: "train"
-  vehicles_only: true
+data: # don't used in this ver
+  # source: "name"
+  # root: likelly be a path an INTERACTION dataset (need an access)
+  # split: "train" 
+  vehicles_only: true # car, vehicle, truck_bus, truck, bus
   stride: 10
   max_files: null
   max_scenes: null
@@ -64,16 +64,15 @@ train:
   val_batches: 8
   theta_calib_batches: 20
 
-  # No oracle hard-pair labels and no global collision penalty: the only extra
-  # supervision is the KL-selected local teacher correction.
+  # learn trough ground truth for all scenes + add only local KL-selected safety distillation.
   lambda_gt_all: 1.00
   lambda_easy_gt: 0.00
   lambda_hard_gt: 0.00
   lambda_distill: 1.00
   lambda_safety: 0.00
   lambda_pair_safety: 0.00
-  safety_loss_margin: 0.20
-  pair_safety_margin: 0.30
+  # safety_loss_margin: 0.20 #until lambda_safety: 0.00
+  # pair_safety_margin: 0.30 #until lambda_safety: 0.00
   safe_target_blend: 0.70
   grad_clip: 5.0
   print_every: 20
