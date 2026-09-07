@@ -22,7 +22,6 @@ TensorDict = Dict[str, torch.Tensor]
 
 
 def detect_risk(system: FullSystem, prior_dist, batch: TensorDict):
-    """Run the detector with optional real-data masks/context."""
     return system.risk_detector(
         prior_dist,
         valid_agent_mask=batch.get("valid_agent_mask", batch.get("agent_mask")),
@@ -40,7 +39,6 @@ def gaussian_nll_masked(
     max_log_sigma: float = 2.0,
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Gaussian NLL, optionally masking scenes and padded agents."""
     if mu.shape != target.shape:
         raise ValueError(f"mu and target shape mismatch: {mu.shape} vs {target.shape}")
 
@@ -73,7 +71,6 @@ def gaussian_nll_agent_masked(
     min_log_sigma: float = -5.0,
     max_log_sigma: float = 2.0,
 ) -> torch.Tensor:
-    """Gaussian NLL only on selected agents [B,N]."""
     if mu.shape != target.shape:
         raise ValueError(f"mu and target shape mismatch: {mu.shape} vs {target.shape}")
     if agent_mask.shape != (mu.shape[0], mu.shape[2]):
@@ -96,7 +93,6 @@ def differentiable_collision_loss(
     safety_margin: float = 0.25,
     valid_agent_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Soft collision penalty over all pairs."""
     if traj.dim() != 4 or traj.shape[-1] != 2:
         raise ValueError(f"Expected traj shape [B,T,N,2], got {traj.shape}")
 
@@ -124,7 +120,6 @@ def hard_pair_safety_loss(
     d_min: float,
     safety_margin: float = 0.30,
 ) -> torch.Tensor:
-    """Focused soft safety loss for synthetic hard pairs, used only in Ours branch."""
     if traj.dim() != 4 or traj.shape[-1] != 2:
         raise ValueError(f"Expected traj shape [B,T,N,2], got {traj.shape}")
 
@@ -258,10 +253,7 @@ def save_checkpoint(
 
 
 def matched_score(metrics: Dict[str, float]) -> float:
-    """
-    Same checkpoint-selection score for GT-control and Ours.
-    Lower is better. Safety matters most, but accuracy/refine rate also count.
-    """
+    # Same checkpoin selection score for GT-control and Ours.
     collision = float(metrics.get("Collision", 1.0))
     collision_hard = float(metrics.get("Collision_hard", 1.0))
     ade_hard = float(metrics.get("ADE_hard", 1.0))
@@ -524,13 +516,8 @@ def make_kl_local_teacher(
     system: FullSystem,
     batch: TensorDict,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, object]]:
-    """
-    Build the teacher from exactly the KL-selected local corrections.
-
-    Returns a scene mask and, crucially, an agent mask. The old code blended the
-    teacher into every agent of a selected scene, including agents that had not
-    been refined. That was not local distillation and could damage ADE.
-    """
+    
+    # Build the teacher from exactly the KL-selected local corrections
     system.eval()
     output = system(batch=batch, mode="kl_triggered", training=False)
     teacher_traj = output["final_traj"].detach()
@@ -560,13 +547,6 @@ def train_safety_distill_epoch(
     epoch: int,
     n_epochs: int,
 ) -> Dict[str, List[float]]:
-    """
-    Ours continuation:
-      - same training budget as GT-control;
-      - after warmup, supervision changes only for KL-triggered local risky scenes;
-      - pseudo-labels are local-refined trajectories from the current system;
-      - theta is frozen, so refine-rate decay means the planner itself became safer.
-    """
     system.train()
     model_cfg = config["model"]
     train_cfg = config["train"]
@@ -589,17 +569,17 @@ def train_safety_distill_epoch(
         is_hard = batch["is_hard"].bool()
         is_easy = ~is_hard
 
-        # Local teacher from KL-triggered local refiner. No gradient through teacher.
+        # Local teacher from KL-triggered local refiner (no GT teacher)
         teacher_traj, distill_mask, distill_agent_mask, teacher_risk = make_kl_local_teacher(
             system=system, batch=batch
         )
 
-        # Student forward with gradient.
+        # Student forward with gradient
         plan_output = system.encode_and_plan(batch)
         prior_dist = plan_output["prior_dist"]
         risk_output = detect_risk(system, prior_dist, batch)
 
-        # Blend the local teacher with GT to avoid destroying ADE while still learning safety.
+        # Blend the local teacher with GT to avoid destroying ADE while still learning safety
         safe_target = gt.clone()
         if distill_agent_mask.any():
             agent_select = distill_agent_mask[:, None, :, None].expand_as(gt)
@@ -757,7 +737,7 @@ def plot_training_curves(rows: List[Dict[str, float | str]], save_dir: str) -> N
         plt.savefig(save_path / f"matched_{key}.png", dpi=160)
         plt.close()
 
-    # Specific refinement-rate decay plot for Ours.
+
     ours = [r for r in rows if str(r["branch"]) == "ours_safety" and "refine_rate" in r]
     if ours:
         y = [float(r["refine_rate"]) for r in ours]
@@ -816,9 +796,7 @@ def run_matched_budget_training(
     print("results_dir:      ", results_dir)
     print("checkpoint_dir:   ", checkpoint_dir)
 
-    # ---------------------------
-    # Stage 0: shared GT warmup.
-    # ---------------------------
+    # shared GT warmup
     system_shared = FullSystem.from_config(config).to(device)
     optimizer_planner = torch.optim.Adam(system_shared.planner_parameters(), lr=train_cfg["lr"])
     optimizer_theta = torch.optim.Adam(system_shared.theta_parameters(), lr=config["risk"]["lr_theta"])
@@ -864,7 +842,6 @@ def run_matched_budget_training(
             f"theta={row['theta']:.3f}"
         )
 
-    # Calibrate theta ONCE after the shared warmup and freeze it for both branches.
     calibrate_theta(
         system=system_shared,
         generator=generator,
@@ -894,16 +871,12 @@ def run_matched_budget_training(
     shared_state = copy.deepcopy(system_shared.state_dict())
     theta_value = float(system_shared.risk_detector.theta.detach().cpu().item())
 
-    # Fairness: both post-split branches receive the exact same random batch
-    # sequence, not merely the same number of epochs from the same distribution.
     branch_config = copy.deepcopy(config)
     branch_config["seed"] = int(config.get("seed", 42)) + 2000
     generator_gt = make_scene_source(branch_config, split="train")
     generator_ours = make_scene_source(branch_config, split="train")
 
-    # --------------------------------
-    # Branch A: extra GT control.
-    # --------------------------------
+    # extra GT control
     system_gt = FullSystem.from_config(config).to(device)
     system_gt.load_state_dict(shared_state)
     system_gt.risk_detector.set_theta(theta_value)
@@ -985,9 +958,7 @@ def run_matched_budget_training(
         path=str(checkpoint_dir / "gt_control.pt"),
     )
 
-    # ----------------------------------------
-    # Branch B: Ours safety-distillation branch.
-    # ----------------------------------------
+    # Ours safety-distillation branch
     system_ours = FullSystem.from_config(config).to(device)
     system_ours.load_state_dict(shared_state)
     system_ours.risk_detector.set_theta(theta_value)
@@ -1070,10 +1041,10 @@ def run_matched_budget_training(
     plot_training_curves(rows, str(results_dir))
 
     print("\nDone matched-budget training.")
-    print(f"Shared warmup:       {checkpoint_dir / 'shared_warmup.pt'}")
-    print(f"GT-control best:     {checkpoint_dir / 'gt_control_best.pt'}")
-    print(f"Ours safety best:    {checkpoint_dir / 'ours_best.pt'}")
-    print(f"Train log:           {train_log_path}")
+    print(f"Shared warmup: {checkpoint_dir / 'shared_warmup.pt'}")
+    print(f"GT-control best: {checkpoint_dir / 'gt_control_best.pt'}")
+    print(f"Ours safety best: {checkpoint_dir / 'ours_best.pt'}")
+    print(f"Train log: {train_log_path}")
 
     return rows
 
