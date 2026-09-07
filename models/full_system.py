@@ -15,33 +15,7 @@ TensorDict = Dict[str, torch.Tensor]
 RiskyPairs = List[List[Tuple[int, int]]]
 
 
-class FullSystem(nn.Module):
-    """
-    Full KL-triggered trajectory refinement system.
-
-    Pipeline:
-        past scene
-            -> SceneBackbone
-            -> GlobalPlanner
-            -> RiskDetector
-            -> LocalRefiner if KL > theta
-
-    Supported modes:
-        global_only:
-            no local refinement, baseline mode.
-
-        kl_triggered:
-            local refiner is called only for scenes where KL > theta.
-
-        always_refine:
-            local refiner is called for every scene.
-            This is the expensive upper baseline.
-
-        oracle_refine:
-            local refiner uses ground-truth hard_pairs from synthetic generator.
-            This is only for debugging / sanity check, not final method.
-    """
-
+class FullSystem(nn.Module)
     def __init__(
         self,
         backbone: SceneBackbone,
@@ -57,8 +31,7 @@ class FullSystem(nn.Module):
         self.risk_detector = risk_detector
         self.local_refiner = local_refiner
 
-        # Used only for existing-style scene-level switching baseline.
-        # This is NOT KL-based.
+        # Used only for existing-style scene-level switching baseline
         self.scene_switch_margin = float(scene_switch_margin)
 
     @classmethod
@@ -79,34 +52,13 @@ class FullSystem(nn.Module):
         )
 
     def planner_parameters(self):
-        """
-        Parameters of the neural planner part:
-            backbone + global planner.
-
-        Used for main NLL / distillation optimizer.
-        """
         yield from self.backbone.parameters()
         yield from self.global_planner.parameters()
 
     def theta_parameters(self):
-        """
-        Parameters of adaptive KL threshold theta.
-
-        Used for separate theta optimizer.
-        """
         yield from self.risk_detector.parameters()
 
     def encode_and_plan(self, batch: TensorDict) -> Dict[str, object]:
-        """
-        Run backbone and global planner.
-
-        Returns:
-            encoded:
-                agent_embeddings, scene_embedding
-
-            prior_dist:
-                ProbabilisticTrajectory from global planner
-        """
         encoded = self.backbone(batch)
 
         last_positions = batch["past_positions"][:, -1]
@@ -128,10 +80,6 @@ class FullSystem(nn.Module):
         self,
         hard_pairs: torch.Tensor,
     ) -> RiskyPairs:
-        """
-        Convert synthetic generator hard_pairs tensor [B, 2]
-        into list format used by LocalRefiner.
-        """
         risky_pairs: RiskyPairs = []
 
         for pair in hard_pairs:
@@ -150,13 +98,7 @@ class FullSystem(nn.Module):
         scene_mask: torch.Tensor,
         risky_pairs: RiskyPairs,
     ) -> TensorDict:
-        """
-        Run LocalRefiner only on selected scenes.
-
-        This makes KL-triggered latency honest:
-        if only 20% of scenes are risky, ADMM is applied only to that subset,
-        not to the whole batch.
-        """
+        # if only 20% of scenes are risky, ADMM is applied only to that subset
         if global_traj.dim() != 4:
             raise ValueError(
                 f"global_traj must have shape [B,T,N,2], got {global_traj.shape}"
@@ -215,9 +157,6 @@ class FullSystem(nn.Module):
         global_traj: torch.Tensor,
         scene_mask: torch.Tensor,
     ) -> TensorDict:
-        """
-        Create an empty refiner output with the same structure as LocalRefiner.
-        """
         B, _, N, _ = global_traj.shape
         device = global_traj.device
         dtype = global_traj.dtype
@@ -246,10 +185,6 @@ class FullSystem(nn.Module):
         device: torch.device,
         valid_agent_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        Full-scene mask: all upper-triangular agent pairs.
-        Used for honest scene-level / always-refine baselines.
-        """
         upper = torch.triu(
             torch.ones(n_agents, n_agents, dtype=torch.bool, device=device),
             diagonal=1,
@@ -269,14 +204,7 @@ class FullSystem(nn.Module):
         global_traj: torch.Tensor,
         valid_agent_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        Existing-style scene-level switching baseline.
 
-        A scene is risky if any pair in the predicted trajectory
-        becomes closer than d_min + margin.
-
-        This trigger is intentionally NOT KL-based.
-        """
         if global_traj.dim() != 4 or global_traj.shape[-1] != 2:
             raise ValueError(
                 f"global_traj must have shape [B,T,N,2], got {global_traj.shape}"
@@ -309,17 +237,6 @@ class FullSystem(nn.Module):
         scene_mask: torch.Tensor,
         valid_agent_mask: torch.Tensor | None = None,
     ) -> TensorDict:
-        """
-        Run refiner on selected scenes with ALL agent pairs active.
-
-        This is used for:
-            - scene-level switching baseline
-            - always-refine baseline
-
-        Difference from our method:
-            once the scene is selected, correction is full-scene,
-            not local-crop.
-        """
         if global_traj.dim() != 4 or global_traj.shape[-1] != 2:
             raise ValueError(
                 f"global_traj must have shape [B,T,N,2], got {global_traj.shape}"
@@ -375,20 +292,6 @@ class FullSystem(nn.Module):
         scene_mask: torch.Tensor,
         risky_pairs: RiskyPairs,
     ) -> TensorDict:
-        """
-        Fast local refinement for KL-triggered mode.
-
-        Old version:
-            loop over selected scenes and call LocalRefiner once per scene.
-            On CPU this is slow because many tiny Python calls dominate latency.
-
-        New version:
-            build one batched tensor of risky pairs [K, T, 2, 2], run the
-            refiner once on those local pair-crops, then scatter the local
-            corrections back into the full [B, T, N, 2] trajectory.
-
-        This keeps the method local: only agents from KL-risky pairs are changed.
-        """
         if global_traj.dim() != 4 or global_traj.shape[-1] != 2:
             raise ValueError(
                 f"global_traj must have shape [B,T,N,2], got {global_traj.shape}"
@@ -445,7 +348,7 @@ class FullSystem(nn.Module):
 
         K = b_idx.numel()
 
-        # [K,T,2,2]: each local problem contains only the selected pair.
+        # each local problem contains only the selected pair.
         pair_traj = torch.stack(
             [
                 global_traj[b_idx, :, i_idx, :],
@@ -462,8 +365,8 @@ class FullSystem(nn.Module):
             pair_mask=local_pair_mask,
         )
 
-        refined_pairs = local_output["refined_traj"]       # [K,T,2,2]
-        pair_delta = refined_pairs - pair_traj              # [K,T,2,2]
+        refined_pairs = local_output["refined_traj"]
+        pair_delta = refined_pairs - pair_traj
 
         # If the same agent appears in several risky pairs, average its local
         # corrections rather than overwriting the previous correction.
@@ -497,7 +400,7 @@ class FullSystem(nn.Module):
         full_output["refined_traj"] = global_traj + averaged_delta
         full_output["pair_mask"][b_idx, i_idx, j_idx] = True
 
-        # Stats only; small loop over K pair records is fine and does not call ADMM.
+        # Stats only, small loop over K pair records is fine and does not call ADMM.
         for k, b in enumerate(b_idx.detach().cpu().tolist()):
             before = local_output["min_dist_before"][k]
             after = local_output["min_dist_after"][k]
@@ -526,9 +429,6 @@ class FullSystem(nn.Module):
         refiner_output: TensorDict | None,
         refiner_called: torch.Tensor,
     ) -> Dict[str, object]:
-        """
-        Collect lightweight runtime statistics.
-        """
         B = final_traj.shape[0]
 
         stats: Dict[str, object] = {
@@ -595,44 +495,7 @@ class FullSystem(nn.Module):
         mode: str = "kl_triggered",
         training: bool = False,
     ) -> Dict[str, object]:
-        """
-        Full forward pass.
-
-        Args:
-            batch:
-                Output of SceneGenerator.generate_batch(...)
-
-            mode:
-                global_only | kl_triggered | always_refine | oracle_refine
-
-            training:
-                Kept for future train.py logic.
-                The current forward returns all objects needed for training.
-
-        Returns:
-            {
-                prior_dist:
-                    ProbabilisticTrajectory from global planner
-
-                global_traj:
-                    prior mean trajectory [B, T_future, N, 2]
-
-                final_traj:
-                    final trajectory after optional refinement
-
-                refined_traj:
-                    refined trajectory if refiner was used, otherwise global_traj
-
-                risk:
-                    risk detector output or None
-
-                refiner:
-                    local refiner output or None
-
-                stats:
-                    summary dictionary
-            }
-        """
+ 
         if mode not in {
             "global_only",
             "scene_switching",
@@ -668,8 +531,6 @@ class FullSystem(nn.Module):
             pass
 
         elif mode == "scene_switching":
-            # Existing-style baseline:
-            # cheap scene-level distance trigger.
             # If the scene is risky, refine the whole scene / all pairs.
             refiner_called = self._scene_risk_flags_from_distance(
                 global_traj, valid_agent_mask=valid_agent_mask
@@ -696,8 +557,7 @@ class FullSystem(nn.Module):
             risky_pairs = risk_output["risky_pairs"]
             refiner_called = risk_output["risk_flags"].bool()
 
-            # Run a single batched local correction over only KL-selected pairs,
-            # then scatter the pair deltas back into the full scene.
+            # Run a single batched local correction over only KL-selected pairs
             refiner_output = self._run_local_refiner_cropped(
                 global_traj=global_traj,
                 scene_mask=refiner_called,
@@ -707,7 +567,6 @@ class FullSystem(nn.Module):
             final_traj = refined_traj
 
         elif mode == "always_refine":
-            # Heavy upper baseline:
             # full-scene correction for every scene.
             refiner_called = torch.ones(
                 B,
@@ -727,7 +586,7 @@ class FullSystem(nn.Module):
         elif mode == "oracle_refine":
             if "hard_pairs" not in batch:
                 raise ValueError(
-                    "oracle_refine requires batch['hard_pairs'] from SceneGenerator"
+                    "oracle_refine дохуя хочет сложные пары"
                 )
 
             risky_pairs = self._pairs_from_hard_pairs_tensor(batch["hard_pairs"])
