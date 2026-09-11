@@ -24,30 +24,22 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 <p>  
    <img src= "assets/kl_architecter.png" align="right" widht="400">
    
-   <ol>
-      <li> <b>Fast probabilistic forecasting</b> <br>
-      A lightweight model predicts a Gaussian future trajectory distribution for each agent:
-      p<sub>fast</sub> = N(μ, σ<sup>2</sup>). </li>
-      
-      <li> <b>Distance pre-filter</b> <br>
-      Clearly irrelevant pairs are removed using a cheap geometric gate based on d<sub>min</sub> + safety<sub>margin</sub>. </li>
-      
-      <li> <b>Safety-adjusted local distribution</b> <br>
-      For candidate pairs that cross the hard separation boundary d<sub>min</sub>, a minimally corrected local distribution q<sub>safe</sub> is constructed.</li> 
-      
-      <li> <b>Pairwise KL trigger</b> <br>
-      The method computes KL(q<sub>safe</sub> || p<sub>fast</sub>).<br>
-      High KL means that the predicted interaction strongly disagrees with the local safety correction.  </li>
-      
-      <li> <b>Contextual threshold and top-k selection </b> <br> 
-      The trigger threshold can adapt to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.</li>
-      
-      <li> <b>Local refinement</b> <br> 
-      The iterative refiner corrects only selected interacting pairs. Other agents keep the original fast forecast. </li>
-      
-      <li> <b>Safety distillation </b> <br>
-      During training, KL-selected refined trajectories provide an auxiliary target for the fast forecaster while the original ground-truth forecasting loss is    retained. </li>
-   </ol>
+1. **Fast probabilistic forecasting**  
+   A lightweight model predicts a Gaussian future trajectory distribution for each agent:  
+   `p_fast = N(μ, σ²)`.
+2. **Distance pre-filter**  
+   Clearly irrelevant pairs are removed using a cheap geometric gate based on `d_min + safety_margin`.
+3. **Safety-adjusted local distribution**  
+   For candidate pairs that cross the hard separation boundary `d_min`, a minimally corrected local distribution `q_safe` is constructed.
+4. **Pairwise KL trigger**  
+   The method computes `KL(q_safe || p_fast)`.  
+   High KL means that the predicted interaction strongly disagrees with the local safety correction.
+5. **Contextual threshold and top-k selection**  
+   The trigger threshold adapts to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.
+6. **Local refinement**  
+   The iterative refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
+7. **Safety distillation**  
+   During training, KL-selected refined trajectories provide an auxiliary target for the fast forecaster while the original ground-truth forecasting loss is retained.
 </p>
 
 ## Results
