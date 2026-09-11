@@ -22,22 +22,22 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 
 ## Method
 
-<img src= "assets/KL_arc.png" align="right" width="450">
+<img src= "assets/KL_arc.png" align="right" width="500">
 
-1. **Fast probabilistic forecasting**
+1. **Fast probabilistic forecasting**<br>
    A lightweight model predicts a Gaussian future trajectory distribution for each agent: `p_fast = N(μ, σ²)`.
-2. **Distance pre-filter**
+2. **Distance pre-filter**<br>
    Pairs that stay far apart are filtered out using a simple distance check based on `d_min + safety_margin`.
-3. **Safety-adjusted local distribution**
+3. **Safety-adjusted local distribution**<br>
    For candidate pairs that cross the hard separation boundary `d_min`, a minimally corrected local distribution `q_safe` is constructed.
-4. **Pairwise KL trigger**
-   The method computes `KL(q_safe || p_fast)`.
+4. **Pairwise KL trigger**<br>
+   The method computes `KL(q_safe || p_fast)`.<br>
    High KL means that the predicted interaction strongly disagrees with the local safety correction.
-5. **Contextual threshold and top-k selection**
+5. **Contextual threshold and top-k selection**<br>
    The trigger threshold adapts to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.
-6. **Local refinement**
+6. **Local refinement**<br>
    The refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
-8. **Safety distillation**
+8. **Safety distillation**<br>
    During training, the refined trajectories of risky pairs are used as extra targets, while the model still learns from the original ground-truth trajectories.
 
 
