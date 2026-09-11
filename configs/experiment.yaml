@@ -1,12 +1,7 @@
-# First realistic-data configuration: INTERACTION / INTERPRET trajectories.
-# Download data separately and set data.root.
 seed: 42
 device: "cpu"
 
-data: # don't used in this ver
-  # source: "name"
-  # root: likelly be a path an INTERACTION dataset (need an access)
-  # split: "train" 
+data:
   vehicles_only: true # car, vehicle, truck_bus, truck, bus
   stride: 10
   max_files: null
