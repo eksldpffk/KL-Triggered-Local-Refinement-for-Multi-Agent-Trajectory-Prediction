@@ -1,12 +1,17 @@
-# KL-Triggered Local Refinement for Multi-Agent Trajectory Prediction
-A multi-agent trajectory prediction framework that uses KL divergence to detect risky interactions and refine only the agents that need correction.
+# KL-Triggered Local Refinement for Multi-Agent Motion Forecasting
 
-## Why this project?
+A selective-compute framework for dense driving scenes.
+The goal is to keep a fast probabilistic forecaster for most interactions and spend extra computation only on local agent pairs whose predictions strongly conflict with a safety-adjusted alternative.
 
-- Fast trajectory predictors are useful for real-time systems, but they may miss important local interactions between nearby agents.
-- Running a heavy safety refinement step on the entire scene can reduce risk, but it also adds unnecessary computation when most agents are already behaving safely.
+## Problem
 
-This project explores a simple idea: **refine only the interactions that actually need it.**
+Multi-agent motion forecasting has a practical trade-off:
+- A lightweight forecaster is fast enough for real-time use, but it can produce locally inconsistent or unsafe interactions.
+- Refining the entire scene can improve safety, but it wastes computation when only one or two pairs are problematic.
+- Distance alone is not enough to decide which close interactions require correction: the same geometric conflict can be more or less significant depending on predictive uncertainty.
+
+The project asks:
+> Can we identify only the interactions that truly need correction and refine them locally, instead of refining the whole scene?
 
 ## How it works
 
