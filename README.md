@@ -22,10 +22,8 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 
 ## Method
 
-<p>  
-   
-<img src= "assets/KL_arc.png" align="right" widht="200">
-   
+ <img src= "assets/KL_arc.png" align="right" widht="200
+    
    1. **Fast probabilistic forecasting**  
       A lightweight model predicts a Gaussian future trajectory distribution for each agent:  
       `p_fast = N(μ, σ²)`.
@@ -42,7 +40,6 @@ If the KL divergence is high, the original prediction would need a meaningful sa
       The refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
    7. **Safety distillation**  
       During training, the refined trajectories of risky pairs are used as extra targets, while the model still learns from the original ground-truth trajectories.
-</p>
 
 ## Results
 
