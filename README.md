@@ -22,10 +22,9 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 
 ## Method
 
-<img src= "assets/KL_arc.png" align="right" widht="200">
 <p>  
    
-
+<img src= "assets/KL_aфrc.png" align="right" widht="200">
    
    1. **Fast probabilistic forecasting**  
       A lightweight model predicts a Gaussian future trajectory distribution for each agent:  
