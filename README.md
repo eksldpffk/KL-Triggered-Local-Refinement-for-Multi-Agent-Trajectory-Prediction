@@ -28,7 +28,7 @@ If the KL divergence is high, the original prediction would need a meaningful sa
    A lightweight model predicts a Gaussian future trajectory distribution for each agent:  
    `p_fast = N(μ, σ²)`.
 2. **Distance pre-filter**  
-   Clearly irrelevant pairs are removed using a cheap geometric gate based on `d_min + safety_margin`.
+   Pairs that stay far apart are filtered out using a simple distance check based on `d_min + safety_margin`.
 3. **Safety-adjusted local distribution**  
    For candidate pairs that cross the hard separation boundary `d_min`, a minimally corrected local distribution `q_safe` is constructed.
 4. **Pairwise KL trigger**  
@@ -37,9 +37,9 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 5. **Contextual threshold and top-k selection**  
    The trigger threshold adapts to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.
 6. **Local refinement**  
-   The iterative refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
+   The refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
 7. **Safety distillation**  
-   During training, KL-selected refined trajectories provide an auxiliary target for the fast forecaster while the original ground-truth forecasting loss is retained.
+   During training, the refined trajectories of risky pairs are used as extra targets, while the model still learns from the original ground-truth trajectories.
 </p>
 
 ## Results
