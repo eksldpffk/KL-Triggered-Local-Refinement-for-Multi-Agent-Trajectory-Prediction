@@ -21,9 +21,8 @@ A fast probabilistic forecaster first predicts future trajectories and uncertain
 If the KL divergence is high, the original prediction would need a meaningful safety correction, so only that local pair is sent to the heavier refiner.
 
 ## Method
- <p>
-   <img src= "assets/KL_arc.png" align="right" widht="200>
- </p>
+
+<img src= "assets/KL_arc.png" align="right" widht="200">
     
    1. **Fast probabilistic forecasting**  
       A lightweight model predicts a Gaussian future trajectory distribution for each agent:  
