@@ -27,7 +27,7 @@ If the KL divergence is high, the original prediction would need a meaningful sa
    <ol>
       <li> <b>Fast probabilistic forecasting</b> <br>
       A lightweight model predicts a Gaussian future trajectory distribution for each agent:
-      p<sub>fast</sub>sub> = N(μ, σ<sup>2</sup>). </li>
+      p<sub>fast</sub> = N(μ, σ<sup>2</sup>). </li>
       
       <li> <b>Distance pre-filter</b> <br>
       Clearly irrelevant pairs are removed using a cheap geometric gate based on d<sub>min</sub> + safety<sub>margin</sub>. </li>
