@@ -46,9 +46,8 @@ If the KL divergence is high, the original prediction would need a meaningful sa
       The iterative refiner corrects only selected interacting pairs. Other agents keep the original fast forecast. </li>
       
       <li> <b>Safety distillation </b> <br>
-      During training, KL-selected refined trajectories provide an auxiliary target for the fast forecaster while the original ground-truth forecasting loss is retained. </li>
+      During training, KL-selected refined trajectories provide an auxiliary target for the fast forecaster while the original ground-truth forecasting loss is    retained. </li>
    </ol>
-
 </p>
 
 ## Results
