@@ -22,24 +22,25 @@ If the KL divergence is high, the original prediction would need a meaningful sa
 
 ## Method
 
-<p>
-    <img src= "assets/KL_arc.png" align="right" widht="350">
-        
-    Fast probabilistic forecasting 
-    A lightweight model predicts a Gaussian future trajectory distribution for each agent: `p_fast = N(μ, σ²)`.
-    Distance pre-filter 
-    Pairs that stay far apart are filtered out using a simple distance check based on `d_min + safety_margin`.
-    Safety-adjusted local distribution  
-    For candidate pairs that cross the hard separation boundary `d_min`, a minimally corrected local distribution `q_safe` is constructed.
-    Pairwise KL trigger
-    The method computes `KL(q_safe || p_fast)`.  
-    High KL means that the predicted interaction strongly disagrees with the local safety correction.
-    Contextual threshold and top-k selection  
-    The trigger threshold adapts to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.
-    Local refinement
-    The refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
-    Safety distillation 
-    During training, the refined trajectories of risky pairs are used as extra targets, while the model still learns from the original ground-truth trajectories.
-</p>
+<img src= "assets/KL_arc.png" align="right" width="350">
+
+1. **Fast probabilistic forecasting**
+   A lightweight model predicts a Gaussian future trajectory distribution for each agent: `p_fast = N(μ, σ²)`.
+2. **Distance pre-filter**
+   Pairs that stay far apart are filtered out using a simple distance check based on `d_min + safety_margin`.
+3. **Safety-adjusted local distribution**
+   For candidate pairs that cross the hard separation boundary `d_min`, a minimally corrected local distribution `q_safe` is constructed.
+4. **Pairwise KL trigger**
+   The method computes `KL(q_safe || p_fast)`.
+   High KL means that the predicted interaction strongly disagrees with the local safety correction.
+5. **Contextual threshold and top-k selection**
+   The trigger threshold adapts to scene density, predictive uncertainty, and the requested safety level. Only the highest-risk pairs are selected.
+6. **Local refinement**
+   The refiner corrects only selected interacting pairs. Other agents keep the original fast forecast.
+8. **Safety distillation**
+   During training, the refined trajectories of risky pairs are used as extra targets, while the model still learns from the original ground-truth trajectories.
+
+
+   
 ## Results
 
