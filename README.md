@@ -44,3 +44,23 @@ If the KL divergence is high, the original prediction would need a meaningful sa
    
 ## Results
 
+Evaluation on the Argoverse 2 validation set.
+
+| Method | ADE ↓ | FDE ↓ | Approx. Collision ↓ | Separation Violation ↓ | P50 Latency ↓ | P95 Latency ↓ | Refine Rate ↓ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Fast only | **0.819** | 2.001 | 19.0% | 60.5% | **1.34 ms** | **2.03 ms** | **0.0%** |
+| Always refine | 0.880 | 2.044 | **0.0%** | **32.9%** | 358.45 ms | 2052.30 ms | 100.0% |
+| Scene-level switching | 0.875 | 2.041 | 7.3% | 48.4% | 4.68 ms | 2028.25 ms | 34.3% |
+| **KL-triggered local (Ours)** | 0.866 | 2.033 | 16.0% | 56.3% | 4.66 ms | 36.20 ms | 34.3% |
+| **Ours + Safety Distillation** | **0.838** | **1.931** | 16.0% | 57.3% | **4.52 ms** | **35.65 ms** | **32.7%** |
+
+The results show the expected safety–computation trade-off.
+
+**Always refine** achieves the best safety, but it is extremely expensive because the whole scene is corrected every time.  
+**Fast only** is the fastest method, but it has the highest collision rate.
+
+Our **KL-triggered local refinement** keeps the refinement rate similar to scene-level switching, but reduces latency from **2028 ms to 36 ms** by correcting only selected risky interactions. The trade-off is weaker safety improvement because only a small part of the scene is refined.
+
+Adding **Safety Distillation** improves prediction quality, reducing ADE from **0.866 to 0.838** and FDE from **2.033 to 1.931**, while also reducing refinement usage from **34.3% to 32.7%**. Approximate collision rate remains unchanged.
+
+Overall, the method does not maximize safety alone. Its advantage is a much better **safety–latency trade-off**, avoiding expensive full-scene refinement while still improving safety over the fast-only model.
