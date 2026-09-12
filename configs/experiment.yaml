@@ -1,0 +1,80 @@
+seed: 42
+device: "auto"
+
+data:
+  source: "av2"
+  train_path: "C:/Users/1/OneDrive/Рабочий стол/Korea uni/DCS541 Advanced deep learning and optimization theory/train.tar"
+  val_path: "C:/Users/1/OneDrive/Рабочий стол/Korea uni/DCS541 Advanced deep learning and optimization theory/val.tar"
+  split: "train"
+  safety_requirement: 0.5
+  cache_size: 2048
+  max_scenes_train: null
+  max_scenes_val: null
+
+paths:
+  results_dir: "results_av2"
+  checkpoint_dir: "results_av2/checkpoints"
+  train_log: "results_av2/train_log.csv"
+
+scene:
+  n_agents: 10
+  T_past: 10
+  T_future: 30
+  dt: 0.1
+  d_min: 4.5
+  local_radius: 45.0
+
+model:
+  backbone_dim: 96
+  planner_hidden: 192
+  min_log_sigma: -5.0
+  max_log_sigma: 2.0
+
+risk:
+  kl_threshold_init: 0.10
+  lr_theta: 0.0005
+  posterior_sigma_scale: 0.7
+  min_sigma: 0.05
+  safety_margin: 1.0
+  sharpness: 8.0
+  top_k_pairs: 3
+  target_refine_rate: 0.25
+  kl_reduction: "mean"
+  threshold_mode: "contextual"
+  contextual_hidden: 16
+  safety_sensitivity: 1.0
+
+admm:
+  rho: 1.0
+  n_iters: 15
+  eps: 0.0001
+  projection_strength: 1.0
+  projection_sweeps: 32
+  projection_tol: 0.001
+
+train:
+  lr: 0.0005
+  batch_size: 8
+  val_batch_size: 64
+
+  split_epochs: 6
+  branch_epochs: 20
+  steps_per_epoch: 75
+
+  val_batches: 4
+  theta_calib_batches: 8
+
+  lambda_distill: 1.0
+  safe_target_blend: 0.70
+  grad_clip: 5.0
+
+eval:
+  batch_size: 16
+  n_batches: 150
+  latency_scenes: 30
+  latency_warmup: 5
+  latency_runs_per_scene: 1
+
+metrics:
+  vehicle_length: 4.0
+  vehicle_width: 2.0
